@@ -13,29 +13,32 @@ import {
    STAR FIELD
 ───────────────────────────────────────────────────────────────────────────── */
 function StarField() {
-  const stars = useMemo(
-    () =>
-      Array.from({ length: 220 }, (_, i) => ({
-        id: i,
-        x: Math.random() * 100,
-        y: Math.random() * 100,
-        size: Math.random() * 1.8 + 0.3,
-        delay: Math.random() * 4,
-        duration: Math.random() * 4 + 2,
-        opacity: Math.random() * 0.65 + 0.1,
-      })),
-    []
-  );
+  // Seeded random so SSR matches client
+  const stars = useMemo(() => {
+    let seed = 42;
+    const rand = () => { seed = (seed * 16807 + 0) % 2147483647; return (seed - 1) / 2147483646; };
+    const colors = ["#ffffff", "#ffffff", "#ffffff", "#fff8e0", "#ffe8b0", "#d0e8ff", "#ffd0d0"];
+    return Array.from({ length: 280 }, (_, i) => ({
+      id: i,
+      x: rand() * 100,
+      y: rand() * 100,
+      size: rand() < 0.08 ? rand() * 2.2 + 1.8 : rand() * 1.4 + 0.5, // occasional bright stars
+      delay: rand() * 6,
+      duration: rand() * 5 + 2.5,
+      opacity: rand() * 0.75 + 0.25,
+      color: colors[Math.floor(rand() * colors.length)],
+    }));
+  }, []);
 
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
       {stars.map((s) => (
         <motion.div
           key={s.id}
-          className="absolute rounded-full bg-white"
-          style={{ left: `${s.x}%`, top: `${s.y}%`, width: s.size, height: s.size }}
+          className="absolute rounded-full"
+          style={{ left: `${s.x}%`, top: `${s.y}%`, width: s.size, height: s.size, backgroundColor: s.color }}
           initial={{ opacity: 0 }}
-          animate={{ opacity: [0, s.opacity, s.opacity * 0.25, s.opacity] }}
+          animate={{ opacity: [0, s.opacity, s.opacity * 0.30, s.opacity] }}
           transition={{ delay: s.delay, duration: s.duration, repeat: Infinity, ease: "easeInOut" }}
         />
       ))}
@@ -75,39 +78,81 @@ function Saturn({ scrollYProgress }: { scrollYProgress: MotionValue<number> }) {
   const ringSpring = useSpring(ringTilt, { stiffness: 55, damping: 22 });
   const planetRotateZ = useTransform(scrollYProgress, [0, 1], [0, 6]);
 
-  const P = 400; // planet diameter
+  const P = 560; // planet diameter — larger + more detailed
 
+  // Vibrant atmospheric bands with real-Saturn-style contrast
   const bands = [
-    { top: "13%", h: "4%",  dark: false, op: 0.16 },
-    { top: "20%", h: "2.5%",dark: true,  op: 0.18 },
-    { top: "27%", h: "6%",  dark: false, op: 0.14 },
-    { top: "36%", h: "3%",  dark: true,  op: 0.20 },
-    { top: "42%", h: "7%",  dark: false, op: 0.12 },
-    { top: "52%", h: "3.5%",dark: true,  op: 0.16 },
-    { top: "58%", h: "5%",  dark: false, op: 0.13 },
-    { top: "67%", h: "2.5%",dark: true,  op: 0.15 },
-    { top: "73%", h: "4%",  dark: false, op: 0.12 },
-    { top: "80%", h: "2%",  dark: true,  op: 0.10 },
+    { top: "7%",  h: "3%",   color: "rgba(255,238,160,0.42)" },
+    { top: "12%", h: "5%",   color: "rgba(248,220,130,0.32)" },
+    { top: "18%", h: "2.5%", color: "rgba(80,40,8,0.55)" },
+    { top: "22%", h: "4.5%", color: "rgba(252,225,138,0.36)" },
+    { top: "28%", h: "2%",   color: "rgba(70,34,6,0.50)" },
+    { top: "32%", h: "5%",   color: "rgba(240,200,108,0.26)" },
+    { top: "39%", h: "2%",   color: "rgba(65,30,5,0.46)" },
+    { top: "43%", h: "4%",   color: "rgba(228,185,92,0.22)" },
+    { top: "49%", h: "2%",   color: "rgba(60,28,4,0.42)" },
+    { top: "53%", h: "3.5%", color: "rgba(215,172,80,0.20)" },
+    { top: "58%", h: "1.8%", color: "rgba(55,24,4,0.36)" },
+    { top: "62%", h: "3%",   color: "rgba(200,158,68,0.17)" },
+    { top: "67%", h: "1.5%", color: "rgba(50,22,3,0.30)" },
+    { top: "71%", h: "2.5%", color: "rgba(185,145,58,0.14)" },
+    { top: "76%", h: "1.5%", color: "rgba(45,20,3,0.25)" },
+    { top: "80%", h: "2%",   color: "rgba(170,132,50,0.12)" },
+    { top: "85%", h: "1.2%", color: "rgba(40,18,2,0.20)" },
   ];
 
-  // Ring band definitions [rx, ry, color, strokeWidth]
-  const ringBands: [number, number, string, number][] = [
-    [530, 95,  "rgba(120,80,20,0.20)",   8],
-    [510, 91,  "rgba(160,110,35,0.28)",  10],
-    [488, 87,  "rgba(190,145,55,0.38)",  14],
-    [462, 83,  "rgba(210,170,70,0.52)",  18],
-    [436, 78,  "rgba(225,185,80,0.62)",  22],
-    [408, 73,  "rgba(215,175,75,0.55)",  16],
-    [382, 68,  "rgba(195,155,60,0.42)",  12],
-    [354, 63,  "rgba(170,130,48,0.32)",  10],
-    [326, 58,  "rgba(145,105,35,0.22)",  8],
-    [296, 53,  "rgba(120,80,22,0.15)",   6],
-  ];
-
-  const svgW = 1200;
-  const svgH = 280;
+  // Ring system: C ring → B ring (bright) → Cassini Division → A ring → F ring → outer
+  // SVG coord system: planet center at (cx, cy), planet radius P/2 = 280
+  const svgW = 1900;
+  const svgH = 460;
   const cx = svgW / 2;
   const cy = svgH / 2;
+
+  // [rx, ry, color, strokeWidth]
+  const ringBands: [number, number, string, number][] = [
+    // ── C ring (inner, translucent brownish-tan)
+    [294, 49,  "rgba(165,122,60,0.30)",  7],
+    [308, 51,  "rgba(155,115,54,0.38)",  8],
+    [322, 54,  "rgba(162,122,58,0.42)",  9],
+    [336, 56,  "rgba(168,130,64,0.44)",  9],
+    [350, 58,  "rgba(172,135,68,0.42)",  8],
+
+    // ── B ring (WIDEST, BRIGHTEST — cream / warm white / golden)
+    [368, 61,  "rgba(210,182,108,0.62)", 14],
+    [386, 64,  "rgba(228,204,130,0.75)", 18],
+    [406, 68,  "rgba(244,222,150,0.85)", 22],
+    [426, 71,  "rgba(252,234,162,0.92)", 27],
+    [446, 75,  "rgba(255,240,168,0.96)", 30], // peak brightness
+    [466, 78,  "rgba(255,238,165,0.96)", 30],
+    [486, 82,  "rgba(252,232,158,0.91)", 27],
+    [504, 85,  "rgba(244,220,146,0.84)", 22],
+    [520, 87,  "rgba(228,202,126,0.74)", 18],
+    [534, 90,  "rgba(210,180,104,0.60)", 13],
+
+    // ── Cassini Division (prominent dark gap)
+    [549, 92,  "rgba(4,2,1,0.96)",       16],
+    [563, 94,  "rgba(6,3,1,0.92)",       11],
+
+    // ── A ring (bright, slightly warmer tint than B)
+    [578, 97,  "rgba(205,175,102,0.58)", 13],
+    [596, 100, "rgba(220,190,112,0.68)", 17],
+    [614, 103, "rgba(230,200,120,0.76)", 19],
+    [630, 106, "rgba(226,196,116,0.72)", 17],
+    [646, 109, "rgba(215,184,106,0.62)", 13],
+    [662, 111, "rgba(198,168,92,0.50)",  10],
+    [676, 114, "rgba(180,150,78,0.38)",  8],
+
+    // ── F ring (narrow, distinct bright line)
+    [700, 117, "rgba(242,220,154,0.56)",  4],
+    [706, 118, "rgba(238,215,148,0.44)",  3],
+
+    // ── G / outer diffuse rings
+    [728, 122, "rgba(158,128,68,0.26)",   6],
+    [756, 126, "rgba(138,110,55,0.17)",   5],
+    [784, 131, "rgba(118,94,44,0.10)",    4],
+    [812, 135, "rgba(98,78,34,0.06)",     4],
+    [840, 140, "rgba(78,62,26,0.04)",     3],
+  ];
 
   return (
     <div style={{ position: "relative", width: P, height: P }} aria-hidden>
@@ -135,6 +180,14 @@ function Saturn({ scrollYProgress }: { scrollYProgress: MotionValue<number> }) {
             <rect x={0} y={cy} width={svgW} height={svgH} />
           </clipPath>
         </defs>
+        {/* Planet shadow cast on back rings (shadow falls right of planet) */}
+        <defs>
+          <radialGradient id="ring-shadow-grad" cx="62%" cy="50%" r="38%">
+            <stop offset="0%" stopColor="rgba(0,0,0,0.55)" />
+            <stop offset="60%" stopColor="rgba(0,0,0,0.20)" />
+            <stop offset="100%" stopColor="rgba(0,0,0,0)" />
+          </radialGradient>
+        </defs>
         <g clipPath="url(#ring-back)">
           {ringBands.map(([rx, ry, color, sw], i) => (
             <ellipse
@@ -148,6 +201,8 @@ function Saturn({ scrollYProgress }: { scrollYProgress: MotionValue<number> }) {
               strokeWidth={sw}
             />
           ))}
+          {/* Planet shadow on rings */}
+          <ellipse cx={cx} cy={cy} rx={620} ry={112} fill="url(#ring-shadow-grad)" />
         </g>
       </motion.svg>
 
@@ -164,22 +219,26 @@ function Saturn({ scrollYProgress }: { scrollYProgress: MotionValue<number> }) {
           overflow: "hidden",
           rotateZ: planetRotateZ,
           background: `radial-gradient(
-            ellipse at 38% 30%,
-            #FAF0B8 0%,
-            #ECD870 7%,
-            #D4AA40 17%,
-            #B88228 30%,
-            #8B5C14 46%,
-            #5C380A 63%,
-            #3C2206 78%,
-            #1E1105 100%
+            ellipse at 36% 28%,
+            #FFFCE8 0%,
+            #FAE86A 4%,
+            #F2D045 10%,
+            #E6B828 18%,
+            #D49820 28%,
+            #BE7C18 40%,
+            #9A5C12 54%,
+            #6E380A 68%,
+            #401E04 82%,
+            #1A0C02 100%
           )`,
           boxShadow: `
-            inset -${P * 0.24}px -${P * 0.12}px ${P * 0.38}px rgba(0,0,0,0.82),
-            inset ${P * 0.06}px ${P * 0.04}px ${P * 0.14}px rgba(255,220,100,0.05),
-            0 0 ${P * 0.32}px rgba(201,168,76,0.24),
-            0 0 ${P * 0.65}px rgba(201,168,76,0.10),
-            0 0 ${P * 1.1}px rgba(201,168,76,0.04)
+            inset -${P * 0.22}px -${P * 0.10}px ${P * 0.32}px rgba(0,0,0,0.75),
+            inset ${P * 0.07}px ${P * 0.05}px ${P * 0.20}px rgba(255,228,120,0.14),
+            inset ${P * 0.02}px ${P * 0.02}px ${P * 0.08}px rgba(255,245,200,0.22),
+            0 0 ${P * 0.22}px rgba(240,195,65,0.55),
+            0 0 ${P * 0.45}px rgba(225,178,55,0.30),
+            0 0 ${P * 0.80}px rgba(201,168,76,0.16),
+            0 0 ${P * 1.40}px rgba(201,168,76,0.07)
           `,
           willChange: "transform",
         }}
@@ -194,32 +253,67 @@ function Saturn({ scrollYProgress }: { scrollYProgress: MotionValue<number> }) {
               left: 0,
               right: 0,
               height: b.h,
-              background: `rgba(${b.dark ? "60,28,4" : "200,158,55"},${b.op})`,
+              background: b.color,
             }}
           />
         ))}
-        {/* Polar highlight */}
+        {/* North polar hexagonal region (subtle blue-grey tint) */}
         <div
           style={{
             position: "absolute",
-            top: "6%",
-            left: "44%",
-            width: "20%",
-            height: "14%",
-            borderRadius: "50%",
-            background:
-              "radial-gradient(ellipse, rgba(255,242,190,0.18) 0%, transparent 70%)",
-            transform: "rotate(-22deg)",
+            top: "0%",
+            left: "25%",
+            width: "50%",
+            height: "18%",
+            borderRadius: "0 0 50% 50%",
+            background: "radial-gradient(ellipse at 50% 20%, rgba(160,185,220,0.18) 0%, transparent 70%)",
           }}
         />
-        {/* Terminator shadow edge */}
+        {/* Bright equatorial highlight streak */}
+        <div
+          style={{
+            position: "absolute",
+            top: "42%",
+            left: "8%",
+            right: "8%",
+            height: "1.2%",
+            background: "rgba(255,245,190,0.22)",
+            borderRadius: 4,
+            filter: "blur(1px)",
+          }}
+        />
+        {/* Specular highlight spot */}
+        <div
+          style={{
+            position: "absolute",
+            top: "14%",
+            left: "28%",
+            width: "18%",
+            height: "10%",
+            borderRadius: "50%",
+            background: "radial-gradient(ellipse, rgba(255,252,220,0.38) 0%, transparent 70%)",
+            transform: "rotate(-18deg)",
+            filter: "blur(2px)",
+          }}
+        />
+        {/* Terminator shadow — right side darkening */}
         <div
           style={{
             position: "absolute",
             inset: 0,
             borderRadius: "50%",
             background:
-              "radial-gradient(ellipse at 80% 50%, rgba(0,0,0,0.55) 0%, transparent 55%)",
+              "radial-gradient(ellipse at 82% 52%, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.30) 35%, transparent 58%)",
+          }}
+        />
+        {/* Limb darkening overlay */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: "50%",
+            background:
+              "radial-gradient(ellipse at 50% 50%, transparent 55%, rgba(0,0,0,0.45) 78%, rgba(0,0,0,0.70) 100%)",
           }}
         />
       </motion.div>
@@ -249,7 +343,8 @@ function Saturn({ scrollYProgress }: { scrollYProgress: MotionValue<number> }) {
           {/* Planet mask – hide ring section that overlaps planet body */}
           <mask id="planet-hole">
             <rect x={0} y={0} width={svgW} height={svgH} fill="white" />
-            <ellipse cx={cx} cy={cy} rx={P / 2} ry={P / 2} fill="black" />
+            {/* mask out planet body — radius = P/2 = 280, plus 2px feather */}
+            <ellipse cx={cx} cy={cy} rx={282} ry={282} fill="black" />
           </mask>
         </defs>
         <g clipPath="url(#ring-front)" mask="url(#planet-hole)">
@@ -398,11 +493,11 @@ export function Hero() {
         <ShootingStar delay={11} top="32%" left="68%" />
         <ShootingStar delay={18} top="55%" left="30%" />
 
-        {/* ── Atmospheric glow behind planet ── */}
+        {/* ── Multi-layer atmospheric glow ── */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.6 }}
+          initial={{ opacity: 0, scale: 0.5 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.3, duration: 2.5 }}
+          transition={{ delay: 0.2, duration: 3.0 }}
           style={{
             position: "absolute",
             top: "50%",
@@ -411,19 +506,52 @@ export function Hero() {
             y: "-50%",
             pointerEvents: "none",
             zIndex: 0,
+            marginTop: -380,
+            marginLeft: -200,
           }}
           className="pointer-events-none"
         >
-          {/* Outer diffuse glow */}
-          <div
+          {/* Innermost tight golden halo */}
+          <motion.div
+            animate={{ scale: [1, 1.04, 1], opacity: [0.85, 1, 0.85] }}
+            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
             style={{
-              width: 900,
-              height: 900,
+              position: "absolute",
+              width: 800,
+              height: 800,
               borderRadius: "50%",
               background:
-                "radial-gradient(circle, rgba(201,168,76,0.13) 0%, rgba(201,168,76,0.06) 40%, transparent 68%)",
-              marginLeft: -450 + 200,
-              marginTop: -450 + 200,
+                "radial-gradient(circle, rgba(240,195,60,0.42) 0%, rgba(225,175,50,0.22) 28%, rgba(201,168,76,0.08) 52%, transparent 68%)",
+              marginLeft: -120,  /* -400 + 280 */
+              marginTop: -120,
+            }}
+          />
+          {/* Wide diffuse golden nebula */}
+          <motion.div
+            animate={{ scale: [1, 1.06, 1], opacity: [0.65, 0.85, 0.65] }}
+            transition={{ duration: 8, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+            style={{
+              position: "absolute",
+              width: 1400,
+              height: 1400,
+              borderRadius: "50%",
+              background:
+                "radial-gradient(circle, rgba(220,175,50,0.18) 0%, rgba(201,160,60,0.10) 35%, rgba(180,140,50,0.04) 60%, transparent 75%)",
+              marginLeft: -420,  /* -700 + 280 */
+              marginTop: -420,
+            }}
+          />
+          {/* Subtle cool rim (space atmosphere) */}
+          <div
+            style={{
+              position: "absolute",
+              width: 1100,
+              height: 1100,
+              borderRadius: "50%",
+              background:
+                "radial-gradient(circle, transparent 38%, rgba(80,100,190,0.06) 55%, rgba(60,80,160,0.03) 70%, transparent 82%)",
+              marginLeft: -270,  /* -550 + 280 */
+              marginTop: -270,
             }}
           />
         </motion.div>
@@ -440,8 +568,8 @@ export function Hero() {
             position: "absolute",
             top: "50%",
             left: "50%",
-            marginTop: -380,
-            marginLeft: -200,
+            marginTop: -440,
+            marginLeft: -280,
             zIndex: 5,
             pointerEvents: "none",
           }}
