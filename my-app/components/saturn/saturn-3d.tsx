@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useMemo } from "react";
+import { useRef, useMemo, useState, useEffect } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { MotionValue, useMotionValueEvent } from "framer-motion";
@@ -256,15 +256,49 @@ function RingMesh({ ringTex }: { ringTex: THREE.CanvasTexture | null }) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   SCENE
+   SCENE  —  shows procedural texture instantly, swaps to real photo if it loads
 ───────────────────────────────────────────────────────────────────────────── */
+
+// Candidate real-image URLs tried in order (browser fetches these, not the server)
+const SATURN_SURFACE_URLS = [
+  "https://www.solarsystemscope.com/textures/download/2k_saturn.jpg",
+  "https://upload.wikimedia.org/wikipedia/commons/c/c7/Saturn_during_Equinox.jpg",
+];
+
 function SaturnScene({ scrollRef }: { scrollRef: { current: number } }) {
   const groupRef  = useRef<THREE.Group>(null);
   const planetRef = useRef<THREE.Mesh>(null);
   const moonRef   = useRef<THREE.Group>(null);
 
-  const saturnTex = useMemo(() => createSaturnTexture(), []);
-  const ringTex   = useMemo(() => createRingTexture(),   []);
+  // Procedural texture — generated instantly, used as fallback
+  const proceduralTex = useMemo(() => createSaturnTexture(), []);
+  const ringTex       = useMemo(() => createRingTexture(),   []);
+
+  // Real image texture — loaded from URL in background
+  const [saturnTex, setSaturnTex] = useState<THREE.Texture | null>(proceduralTex);
+
+  useEffect(() => {
+    const loader = new THREE.TextureLoader();
+    loader.crossOrigin = "anonymous";
+    let cancelled = false;
+
+    const tryNext = (i: number) => {
+      if (i >= SATURN_SURFACE_URLS.length || cancelled) return;
+      loader.load(
+        SATURN_SURFACE_URLS[i],
+        (tex) => {
+          if (cancelled) { tex.dispose(); return; }
+          tex.anisotropy = 16;
+          setSaturnTex(tex);   // swap in the real photo
+        },
+        undefined,
+        () => tryNext(i + 1)  // CORS/404 → try next candidate
+      );
+    };
+    tryNext(0);
+
+    return () => { cancelled = true; };
+  }, [proceduralTex]);
 
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime();
