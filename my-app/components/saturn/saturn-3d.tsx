@@ -252,13 +252,23 @@ function SaturnScene({ scrollRef }: { scrollRef: { current: number } }) {
   useEffect(() => {
     const loader = new THREE.TextureLoader();
     loader.crossOrigin = "anonymous";
-    // Local path (works once user uploads the file — see README instructions)
-    loader.load(
+    // Try all known uploaded filenames in order
+    const candidates = [
+      "/Default-Repository-1/IMG_3678.jpeg",
       "/Default-Repository-1/saturn.jpg",
-      (tex) => { tex.anisotropy = 16; setPhotoTex(tex); },
-      undefined,
-      () => { /* file not present — GLSL shader stays active */ }
-    );
+      "/Default-Repository-1/saturn.jpeg",
+      "/Default-Repository-1/saturn.png",
+    ];
+    const tryNext = (i: number) => {
+      if (i >= candidates.length) return;
+      loader.load(
+        candidates[i],
+        (tex) => { tex.anisotropy = 16; setPhotoTex(tex); },
+        undefined,
+        () => tryNext(i + 1)
+      );
+    };
+    tryNext(0);
   }, []);
 
   useFrame(({ clock }) => {
